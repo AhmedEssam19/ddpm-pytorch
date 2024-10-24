@@ -55,16 +55,14 @@ class ConvBlock(nn.Module):
     def __init__(self, dim, dim_out, groups=32):
         super().__init__()
         self.norm = nn.GroupNorm(groups, dim)
-        self.proj = nn.Conv2d(dim, dim_out, 3, padding=1)
         self.act = nn.SiLU()
+        self.proj = nn.Conv2d(dim, dim_out, 3, padding=1)
 
     def forward(self, x, time_embed):
         x = self.norm(x)
         x = self.act(x)
         x = self.proj(x)
-
-        if exists(time_embed):
-            x = x + time_embed[:, :,None, None]
+        x = x + time_embed[:, :,None, None]
         return x
     
 
