@@ -28,18 +28,21 @@ class DiffusionUtils:
         if t[0] == 0:
             return model_mean
         else:
-            z = torch.randn_like(x_t)
+            z = torch.randn_like(x_t, device=x_t.device)
             sqrt_posterior_variance = self._extract(self.sqrt_posterior_variance, t, x_t.shape)
             return model_mean + sqrt_posterior_variance * z
             
     @torch.no_grad()
     def p_sample_loop(self, noise_predictor, shape):
-        x_t = torch.randn(shape)
+        device = next(noise_predictor.parameters()).device
+        x_t = torch.randn(shape, device=device)
+        interval = self.timesteps // 10
         imgs = []
         for i in reversed(range(self.timesteps)):
-            x_t = self.p_sample(noise_predictor, x_t, torch.tensor([i] * shape[0]))
-            imgs.append(x_t)
-        return imgs
+            x_t = self.p_sample(noise_predictor, x_t, torch.tensor([i] * shape[0], device=device))
+            if i % interval == 0:
+                imgs.append(x_t)
+        return torch.cat(imgs, dim=-1)
     
     def q_sample(self, x_0, t, noise):
         sqrt_alpha_bar = self._extract(self.sqrt_alpha_bars, t, x_0.shape)
