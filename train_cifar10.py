@@ -7,7 +7,6 @@ from tqdm import tqdm
 from torch.optim import Adam
 from torch.nn import MSELoss
 from pathlib import Path
-
 from dataset import CIFAR10Dataset
 from diffusion_utils import DiffusionUtils
 from model import UNet
