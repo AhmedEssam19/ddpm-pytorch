@@ -2,19 +2,19 @@ import torch
 
 
 class DiffusionUtils:
-    def __init__(self, timesteps, device):
+    def __init__(self, timesteps):
         self.timesteps = timesteps
-        self.betas = torch.linspace(0.0001, 0.02, timesteps).to(device)
+        self.betas = torch.linspace(0.0001, 0.02, timesteps)
         alphas = 1 - self.betas
-        self.sqrt_alphas = torch.sqrt(alphas).to(device)
-        alpha_bars = torch.cumprod(alphas, dim=0).to(device)
-        self.sqrt_alpha_bars = torch.sqrt(alpha_bars).to(device)
-        self.sqrt_one_minus_alpha_bars = torch.sqrt(1 - alpha_bars).to(device)
-        alpha_bars_prev = torch.cat([torch.tensor([1], device=device), alpha_bars[:-1]])
-        self.sqrt_posterior_variance = torch.sqrt(self.betas * (1 - alpha_bars_prev) / (1 - alpha_bars)).to(device)
+        self.sqrt_alphas = torch.sqrt(alphas)
+        alpha_bars = torch.cumprod(alphas, dim=0)
+        self.sqrt_alpha_bars = torch.sqrt(alpha_bars)
+        self.sqrt_one_minus_alpha_bars = torch.sqrt(1 - alpha_bars)
+        alpha_bars_prev = torch.cat([torch.tensor([1]), alpha_bars[:-1]])
+        self.sqrt_posterior_variance = torch.sqrt(self.betas * (1 - alpha_bars_prev) / (1 - alpha_bars))
 
     def _extract(self, a, t, x_shape):
-        a_t = a[t]
+        a_t = a[t.cpu()]
         batch_size = t.shape[0]
         return a_t.view(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
 

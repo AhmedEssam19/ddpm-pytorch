@@ -20,7 +20,7 @@ import lightning as L
 
 IMAGE_SIZE = 128
 TIMESTEPS = 300
-BATCH_SIZE = 16
+BATCH_SIZE = 2
 VIEW_SAMPLE_SIZE = 10
 NUM_WORKERS = 4
 EPOCHS = 10
@@ -29,10 +29,11 @@ FIRST_LAYER_CHANNELS = 128
 CHANNELS_MULTIPLIER = [1, 2, 2, 2]
 NUM_RES_BLOCKS = 2
 ATTN_RESOLUTIONS = [16]
-LOG_INTERVAL = 10
+LOG_INTERVAL = 100
 RESULTS_FOLDER = Path("./results")
 RESULTS_FOLDER.mkdir(exist_ok=True)
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+ACCELERATOR = "gpu"
+NUM_GPUS = 1
 
 
 def main():
@@ -54,11 +55,11 @@ def main():
 
     dataset = CIFAR10Dataset(timesteps=TIMESTEPS, transform=transform, train=True)
     dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
-    diffusion_utils = DiffusionUtils(TIMESTEPS, DEVICE)
+    diffusion_utils = DiffusionUtils(TIMESTEPS)
     model = PLModel(diffusion_utils)
     logger = TensorBoardLogger(save_dir=str(RESULTS_FOLDER))
     image_generation_callback = ImageGenerationCallback(VIEW_SAMPLE_SIZE, LOG_INTERVAL, diffusion_utils)
-    trainer = L.Trainer(max_epochs=EPOCHS, accelerator=DEVICE, default_root_dir=str(RESULTS_FOLDER), log_every_n_steps=LOG_INTERVAL, logger=logger, callbacks=[image_generation_callback])
+    trainer = L.Trainer(max_epochs=EPOCHS, accelerator=ACCELERATOR, devices=NUM_GPUS, default_root_dir=str(RESULTS_FOLDER), log_every_n_steps=LOG_INTERVAL, logger=logger, callbacks=[image_generation_callback])
     trainer.fit(model, dataloader)
 
 
@@ -75,7 +76,7 @@ class PLModel(L.LightningModule):
     def training_step(self, batch, batch_idx):
         x_0, t = batch
         t = t.squeeze(1)
-        noise = torch.randn_like(x_0).to(DEVICE)
+        noise = torch.randn_like(x_0).to(x_0.device)
         x_t = self.diffusion_utils.q_sample(x_0, t, noise)
         pred = self(x_t, t)
         loss = self.loss_fn(pred, noise)
