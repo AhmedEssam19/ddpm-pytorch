@@ -17,13 +17,13 @@ import numpy as np
 import lightning as L
 
 
-IMAGE_SIZE = 128
-TIMESTEPS = 300
-BATCH_SIZE = 2
+IMAGE_SIZE = 32
+TIMESTEPS = 1000
+BATCH_SIZE = 128
 VIEW_SAMPLE_SIZE = 10
-NUM_WORKERS = 4
-EPOCHS = 10
-LEARNING_RATE = 1e-3
+NUM_WORKERS = 8
+MAX_STEPS = 800000
+LEARNING_RATE = 2e-4
 FIRST_LAYER_CHANNELS = 128
 CHANNELS_MULTIPLIER = [1, 2, 2, 2]
 NUM_RES_BLOCKS = 2
@@ -37,8 +37,6 @@ NUM_GPUS = 1
 
 def main():
     transform = Compose([
-        Resize(IMAGE_SIZE),
-        CenterCrop(IMAGE_SIZE),
         ToTensor(),
         Lambda(lambda x: (x * 2) - 1)
     ])
@@ -58,7 +56,7 @@ def main():
     model = PLModel(diffusion_utils)
     logger = TensorBoardLogger(save_dir=str(RESULTS_FOLDER))
     image_generation_callback = ImageGenerationCallback(VIEW_SAMPLE_SIZE, LOG_INTERVAL, diffusion_utils)
-    trainer = L.Trainer(max_epochs=EPOCHS, accelerator=ACCELERATOR, devices=NUM_GPUS, default_root_dir=str(RESULTS_FOLDER), log_every_n_steps=LOG_INTERVAL, logger=logger, callbacks=[image_generation_callback])
+    trainer = L.Trainer(max_steps=MAX_STEPS, accelerator=ACCELERATOR, devices=NUM_GPUS, default_root_dir=str(RESULTS_FOLDER), log_every_n_steps=LOG_INTERVAL, logger=logger, callbacks=[image_generation_callback])
     trainer.fit(model, dataloader)
 
 
