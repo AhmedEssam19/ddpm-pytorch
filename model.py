@@ -43,32 +43,38 @@ class PosEmbedding(nn.Module):
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, dim, dim_out, groups=32):
+    def __init__(self, dim, dim_out, dropout=None, groups=32):
         super().__init__()
         self.norm = nn.GroupNorm(groups, dim)
         self.act = nn.SiLU()
+        if exists(dropout):
+            self.dropout = nn.Dropout(dropout)
+        else:
+            self.dropout = nn.Identity()
         self.proj = nn.Conv2d(dim, dim_out, 3, padding=1)
 
-    def forward(self, x, time_embed):
+    def forward(self, x, time_embed=None):
         x = self.norm(x)
         x = self.act(x)
+        x = self.dropout(x)
         x = self.proj(x)
-        x = x + time_embed[:, :,None, None]
+        if exists(time_embed):
+            x = x + time_embed[:, :,None, None]
         return x
     
 
 class ResnetBlock(nn.Module):
-    def __init__(self, dim, dim_out, time_emb_dim, groups=32):
+    def __init__(self, dim, dim_out, time_emb_dim, dropout, groups=32):
         super().__init__()
         self.mlp = nn.Sequential(nn.SiLU(), nn.Linear(time_emb_dim, dim_out))
         self.block1 = ConvBlock(dim, dim_out, groups=groups)
-        self.block2 = ConvBlock(dim_out, dim_out, groups=groups)
+        self.block2 = ConvBlock(dim_out, dim_out, dropout, groups=groups)
         self.res_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
 
     def forward(self, x, time_embed):
         time_embed = self.mlp(time_embed)
         h = self.block1(x, time_embed)
-        h = self.block2(h, time_embed)
+        h = self.block2(h)
         return h + self.res_conv(x)
     
 
@@ -89,9 +95,9 @@ class AttentionBlock(nn.Module):
 
 
 class ResnetBlockWithAttention(nn.Module):
-    def __init__(self, dim, dim_out, time_emb_dim, add_attn, groups=32):
+    def __init__(self, dim, dim_out, time_emb_dim, add_attn, dropout, groups=32):
         super().__init__()
-        self.block = ResnetBlock(dim, dim_out, time_emb_dim, groups=groups)
+        self.block = ResnetBlock(dim, dim_out, time_emb_dim, dropout, groups=groups)
         self.attn = AttentionBlock(dim_out, groups=groups) if add_attn else nn.Identity()
 
     def forward(self, x, time_embed):
@@ -100,11 +106,11 @@ class ResnetBlockWithAttention(nn.Module):
         return x
     
 class UNetEncoderBlock(nn.Module):
-    def __init__(self, dim, dim_out, time_emb_dim, num_res_blocks, add_attn, is_last, groups=32):
+    def __init__(self, dim, dim_out, time_emb_dim, num_res_blocks, add_attn, is_last, dropout, groups=32):
         super().__init__()
-        layers = [ResnetBlockWithAttention(dim, dim_out, time_emb_dim, add_attn, groups=groups)]
+        layers = [ResnetBlockWithAttention(dim, dim_out, time_emb_dim, add_attn, dropout, groups=groups)]
         for _ in range(num_res_blocks - 1):
-            layers.append(ResnetBlockWithAttention(dim_out, dim_out, time_emb_dim, add_attn, groups=groups))
+            layers.append(ResnetBlockWithAttention(dim_out, dim_out, time_emb_dim, add_attn, dropout, groups=groups))
         self.blocks = nn.Sequential(*layers)
         self.downsample = DownSample(dim_out) if not is_last else nn.Identity()
 
@@ -119,13 +125,13 @@ class UNetEncoderBlock(nn.Module):
         return x, activations
     
 class UNetDecoderBlock(nn.Module):
-    def __init__(self, dim, dim_out, step_ahead_channels, time_emb_dim, num_res_blocks, add_attn, is_last, groups=32):
+    def __init__(self, dim, dim_out, step_ahead_channels, time_emb_dim, num_res_blocks, add_attn, is_last, dropout, groups=32):
         super().__init__()
-        layers = [ResnetBlockWithAttention(dim + dim_out, dim_out, time_emb_dim, add_attn, groups=groups)]
+        layers = [ResnetBlockWithAttention(dim + dim_out, dim_out, time_emb_dim, add_attn, dropout, groups=groups)]
         for _ in range(num_res_blocks - 2):
-            layers.append(ResnetBlockWithAttention(dim_out * 2, dim_out, time_emb_dim, add_attn, groups=groups))
+            layers.append(ResnetBlockWithAttention(dim_out * 2, dim_out, time_emb_dim, add_attn, dropout, groups=groups))
 
-        layers.append(ResnetBlockWithAttention(dim_out + step_ahead_channels, dim_out, time_emb_dim, add_attn, groups=groups))
+        layers.append(ResnetBlockWithAttention(dim_out + step_ahead_channels, dim_out, time_emb_dim, add_attn, dropout, groups=groups))
         self.blocks = nn.Sequential(*layers)
         self.upsample = Upsample(dim_out) if not is_last else nn.Identity()
 
@@ -137,11 +143,11 @@ class UNetDecoderBlock(nn.Module):
     
 
 class BottleneckBlock(nn.Module):
-    def __init__(self, dim, dim_out, time_emb_dim, groups=32):
+    def __init__(self, dim, dim_out, time_emb_dim, dropout, groups=32):
         super().__init__()
-        self.block1 = ResnetBlock(dim, dim_out, time_emb_dim, groups=groups)
+        self.block1 = ResnetBlock(dim, dim_out, time_emb_dim, dropout, groups=groups)
         self.attn = AttentionBlock(dim_out, groups=groups)
-        self.block2 = ResnetBlock(dim_out, dim_out, time_emb_dim, groups=groups)
+        self.block2 = ResnetBlock(dim_out, dim_out, time_emb_dim, dropout, groups=groups)
 
     def forward(self, x, time_embed):
         x = self.block1(x, time_embed)
@@ -151,7 +157,7 @@ class BottleneckBlock(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, resolution, channels, channel_mults, num_res_blocks, attn_resolutions, num_groups=32):
+    def __init__(self, resolution, channels, channel_mults, num_res_blocks, attn_resolutions, dropout, num_groups=32):
         super().__init__()
         self.resolution = resolution
         self.pos_embedding = PosEmbedding(channels, output_dim=channels * 4)
@@ -164,19 +170,19 @@ class UNet(nn.Module):
             out_channels = channels * mult
             is_last = i == len(channel_mults) - 1
 
-            self.down_blocks.append(UNetEncoderBlock(in_channels, out_channels, time_emb_dim, num_res_blocks, add_attn=resolution in attn_resolutions, is_last=is_last, groups=num_groups))
+            self.down_blocks.append(UNetEncoderBlock(in_channels, out_channels, time_emb_dim, num_res_blocks, add_attn=resolution in attn_resolutions, is_last=is_last, dropout=dropout, groups=num_groups))
             if not is_last:
                 resolution //= 2
             in_channels = out_channels
 
-        self.mid_block = BottleneckBlock(in_channels, in_channels, time_emb_dim, groups=num_groups)
+        self.mid_block = BottleneckBlock(in_channels, in_channels, time_emb_dim, dropout, groups=num_groups)
         
         self.up_blocks = nn.ModuleList([])
         for i in reversed(range(len(channel_mults))):
             out_channels = channels * channel_mults[i]
             is_last = i == 0
             step_ahead_channels = channels * channel_mults[i - 1] if not is_last else channels
-            self.up_blocks.append(UNetDecoderBlock(in_channels, out_channels, step_ahead_channels, time_emb_dim, num_res_blocks + 1, add_attn=resolution in attn_resolutions, is_last=is_last, groups=num_groups))
+            self.up_blocks.append(UNetDecoderBlock(in_channels, out_channels, step_ahead_channels, time_emb_dim, num_res_blocks + 1, add_attn=resolution in attn_resolutions, is_last=is_last, dropout=dropout, groups=num_groups))
             if not is_last:
                 resolution *= 2
             in_channels = out_channels
