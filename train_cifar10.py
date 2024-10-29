@@ -55,7 +55,7 @@ def main():
     diffusion_utils = DiffusionUtils(TIMESTEPS)
     model = PLModel(diffusion_utils)
     logger = TensorBoardLogger(save_dir=str(RESULTS_FOLDER))
-    image_generation_callback = ImageGenerationCallback(VIEW_SAMPLE_SIZE, LOG_INTERVAL, diffusion_utils)
+    image_generation_callback = ImageGenerationCallback(VIEW_SAMPLE_SIZE, IMAGE_SIZE, LOG_INTERVAL, diffusion_utils)
     trainer = L.Trainer(max_steps=MAX_STEPS, accelerator=ACCELERATOR, devices=NUM_GPUS, default_root_dir=str(RESULTS_FOLDER), log_every_n_steps=LOG_INTERVAL, logger=logger, callbacks=[image_generation_callback])
     trainer.fit(model, dataloader)
 
@@ -85,16 +85,17 @@ class PLModel(L.LightningModule):
     
 
 class ImageGenerationCallback(Callback):
-    def __init__(self, num_samples, every_n_steps, diffusion_utils: DiffusionUtils):
+    def __init__(self, num_samples, image_size, every_n_steps, diffusion_utils: DiffusionUtils):
         super().__init__()
         self.num_samples = num_samples
+        self.image_size = image_size
         self.every_n_steps = every_n_steps
         self.diffusion_utils = diffusion_utils
 
     def on_train_batch_end(self, trainer: L.Trainer, pl_module: PLModel, outputs, batch, batch_idx):
-        if (trainer.global_step + 1) % self.every_n_steps == 0:
-            milestone = trainer.global_step // LOG_INTERVAL
-            all_images = self.diffusion_utils.p_sample_loop(pl_module, (VIEW_SAMPLE_SIZE, 3, IMAGE_SIZE, IMAGE_SIZE))
+        if trainer.global_step % self.every_n_steps == 0:
+            milestone = trainer.global_step // self.every_n_steps
+            all_images = self.diffusion_utils.p_sample_loop(pl_module, (self.num_samples, 3, self.image_size, self.image_size))
             all_images = (all_images + 1) * 0.5
             img = make_grid(all_images, nrow = 1)
             logger: TensorBoardLogger = trainer.logger
