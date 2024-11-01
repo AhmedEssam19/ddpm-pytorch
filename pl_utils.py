@@ -19,6 +19,7 @@ class PLModel(L.LightningModule):
         self.loss_fn = MSELoss()
         self.diffusion_utils = diffusion_utils
         self.learning_rate = learning_rate
+        self.save_hyperparameters()
 
     def forward(self, x, t):
         return self.model(x, t)

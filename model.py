@@ -82,7 +82,7 @@ class AttentionBlock(nn.Module):
     def __init__(self, dim, groups=32):
         super().__init__()
         self.norm = nn.GroupNorm(groups, dim)
-        self.attn = nn.MultiheadAttention(dim, 1, bias=False, batch_first=True)
+        self.attn = nn.MultiheadAttention(dim, 1, batch_first=True)
         
     def forward(self, x):
         _, _, height, width = x.shape

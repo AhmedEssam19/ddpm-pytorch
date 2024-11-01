@@ -1,6 +1,6 @@
 import typer
 
-from torchvision.transforms import ToTensor, Compose, Lambda, ToPILImage
+from torchvision.transforms import ToTensor, Compose, Lambda, ToPILImage, RandomHorizontalFlip
 from torch.utils.data import DataLoader
 from pathlib import Path
 from dataset import CIFAR10Dataset
@@ -35,17 +35,9 @@ def main(
     results_folder.mkdir(exist_ok=True)
     
     transform = Compose([
+        RandomHorizontalFlip(),
         ToTensor(),
         Lambda(lambda x: (x * 2) - 1)
-    ])
-
-
-    reverse_transform = Compose([
-        Lambda(lambda x: (x + 1) / 2),
-        Lambda(lambda x: x.permute(1, 2, 0)),
-        Lambda(lambda x: x * 255.),
-        Lambda(lambda x: x.numpy().astype(np.uint8)),
-        ToPILImage()
     ])
 
     dataset = CIFAR10Dataset(timesteps=timesteps, transform=transform, train=True)
