@@ -7,19 +7,21 @@ from torchvision.datasets import CIFAR10
 
 
 class CIFAR10Dataset(Dataset):
-    def __init__(self, timesteps, transform, train):
+    def __init__(self, transform, train):
         super().__init__()
-        self.timesteps = timesteps
+        self.train = train
         self.transform = transform
-        self.dataset = CIFAR10(root='./data', train=train, download=True)
+        self.dataset = CIFAR10(root='./data', train=True, download=True)
         
     def __len__(self):
-        return len(self.dataset)
+        if self.train:
+            return len(self.dataset)
+        else:
+            return 1000
     
     def __getitem__(self, idx):
         image, _ = self.dataset[idx]
-        return self.transform(image), torch.randint(0, self.timesteps, (1,))
-    
+        return self.transform(image)
 
 class CelebADataset(Dataset):
     def __init__(self, timesteps, transform):
@@ -33,4 +35,4 @@ class CelebADataset(Dataset):
     
     def __getitem__(self, idx):
         image = Image.open(f"{self.path}/celeba_hq_256/{idx:05d}.jpg")
-        return self.transform(image), torch.randint(0, self.timesteps, (1,))
+        return self.transform(image)

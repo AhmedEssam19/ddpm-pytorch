@@ -21,6 +21,7 @@ def main(
     num_workers: int = 8,
     max_steps: int = 800000,
     learning_rate: float = 2e-4,
+    warmup_steps: int = 5000,
     dropout: float = 0.1,
     first_layer_channels: int = 128,
     channels_multiplier: list[int] = [1, 2, 2, 2],
@@ -40,14 +41,25 @@ def main(
         Lambda(lambda x: (x * 2) - 1)
     ])
 
-    dataset = CIFAR10Dataset(timesteps=timesteps, transform=transform, train=True)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    train_dataset = CIFAR10Dataset(transform=transform, train=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    val_dataset = CIFAR10Dataset(transform=transform, train=False)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     diffusion_utils = DiffusionUtils(timesteps)
-    model = PLModel(image_size, first_layer_channels, channels_multiplier, num_res_blocks, attn_resolutions, dropout, learning_rate, diffusion_utils)
+    model = PLModel(image_size, first_layer_channels, channels_multiplier, num_res_blocks, attn_resolutions, dropout, learning_rate, warmup_steps, diffusion_utils)
     logger = TensorBoardLogger(save_dir=str(results_folder))
     image_generation_callback = ImageGenerationCallback(view_sample_size, image_size, log_interval, diffusion_utils)
-    trainer = L.Trainer(max_steps=max_steps, accelerator=accelerator, devices=num_gpus, default_root_dir=str(results_folder), log_every_n_steps=log_interval, logger=logger, callbacks=[image_generation_callback])
-    trainer.fit(model, dataloader)
+    trainer = L.Trainer(
+        max_steps=max_steps, 
+        accelerator=accelerator, 
+        devices=num_gpus, 
+        default_root_dir=str(results_folder), 
+        log_every_n_steps=log_interval, 
+        logger=logger, 
+        callbacks=[image_generation_callback],
+        gradient_clip_val=1.0,
+    )
+    trainer.fit(model, train_dataloader, val_dataloader)
 
 
 if __name__ == "__main__":
