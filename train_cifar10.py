@@ -30,7 +30,9 @@ def main(
     log_interval: int = 100,
     results_folder: str = "./results",
     accelerator: str = "gpu",
-    num_gpus: int = 1
+    num_gpus: int = 1,
+    continue_training: bool = False,
+    checkpoint_path: str = None
 ):
     results_folder = Path(results_folder)
     results_folder.mkdir(exist_ok=True)
@@ -59,7 +61,7 @@ def main(
         callbacks=[image_generation_callback],
         gradient_clip_val=1.0,
     )
-    trainer.fit(model, train_dataloader, val_dataloader)
+    trainer.fit(model, train_dataloader, val_dataloader, ckpt_path=checkpoint_path if continue_training else None)
 
 
 if __name__ == "__main__":

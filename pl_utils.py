@@ -75,8 +75,10 @@ class ImageGenerationCallback(Callback):
     def on_train_batch_end(self, trainer: L.Trainer, pl_module: PLModel, outputs, batch, batch_idx):
         if trainer.global_step % self.every_n_steps == 0:
             milestone = trainer.global_step // self.every_n_steps
+            pl_module.eval()
             all_images = self.diffusion_utils.p_sample_loop(pl_module, (self.num_samples, 3, self.image_size, self.image_size))
             all_images = (all_images + 1) * 0.5
             img = make_grid(all_images, nrow = 1)
             logger: TensorBoardLogger = trainer.logger
             logger.experiment.add_image(f"generated_images_{trainer.global_step}", img, milestone)
+            pl_module.train()
