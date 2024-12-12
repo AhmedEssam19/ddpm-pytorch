@@ -24,14 +24,18 @@ class CIFAR10Dataset(Dataset):
         return self.transform(image)
 
 class CelebADataset(Dataset):
-    def __init__(self, timesteps, transform):
+    def __init__(self, timesteps, transform, train):
         super().__init__()
         self.timesteps = timesteps
         self.transform = transform
+        self.train = train
         self.path = kagglehub.dataset_download("badasstechie/celebahq-resized-256x256")
 
     def __len__(self):
-        return 30000
+        if self.train:
+            return 30000
+        else:
+            return 1000
     
     def __getitem__(self, idx):
         image = Image.open(f"{self.path}/celeba_hq_256/{idx:05d}.jpg")

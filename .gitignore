@@ -4,3 +4,4 @@ scratch*
 .env
 .env.local
 data
+lightning_logs/
