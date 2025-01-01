@@ -91,8 +91,6 @@ Usage: sample.py [OPTIONS] CHECKPOINT_PATH
 
 ```
 
-Generated images will be saved in the `samples/` directory.
-
 ## Model Architecture
 
 The implementation uses a U-Net architecture with:
