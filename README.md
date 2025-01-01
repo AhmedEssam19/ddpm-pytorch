@@ -73,7 +73,22 @@ $ python train.py configs/celeba.yml --continue-training --checkpoint-path path/
 To generate images using a trained model:
 
 ```bash
-python sample.py
+$ python3 sample.py --help          
+                                                                                                                                                                 
+Usage: sample.py [OPTIONS] CHECKPOINT_PATH                                                                                                                      
+                                                                                                                                                                 
+╭─ Arguments ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ *    checkpoint_path      TEXT  [default: None] [required]                                                                                                    │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --device            TEXT     [default: cuda]                                                                                                                  │
+│ --num-images        INTEGER  [default: 8]                                                                                                                     │
+│ --image-size        INTEGER  [default: 256]                                                                                                                   │
+│ --timesteps         INTEGER  [default: 1000]                                                                                                                  │
+│ --batch-size        INTEGER  [default: 8]                                                                                                                     │
+│ --output-dir        TEXT     [default: samples]                                                                                                               │
+│ --help                       Show this message and exit.                                                                                                      │
+
 ```
 
 Generated images will be saved in the `samples/` directory.
