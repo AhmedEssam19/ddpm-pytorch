@@ -19,8 +19,8 @@ This implementation includes:
 
 ## Cost
 
-* Training on CelebA-HQ dataset (256x256 images) costs around $435 for 0.5M steps
-* Training on CIFAR-10 dataset (32x32 images) costs around $70 for 0.8M steps
+* Training on CelebA-HQ dataset (256x256 images) costs around $435 for 0.5M steps. It took ~11 days on 4x RTX A6000
+* Training on CIFAR-10 dataset (32x32 images) costs around $70 for 0.8M steps. It took ~3 days on 1x RTX 4090
 
 ## Installation
 
