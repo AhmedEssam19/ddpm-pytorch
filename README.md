@@ -2,6 +2,17 @@
 
 An unofficial PyTorch implementation of the paper ["Denoising Diffusion Probabilistic Models"](https://arxiv.org/abs/2006.11239) (Ho et al., 2020). This implementation is based on the [official TensorFlow implementation](https://github.com/hojonathanho/diffusion)
 
+![sample](assets/sample.png)
+
+![training_loss](assets/training_loss.png)
+
+![val_loss_at_0](assets/val_loss_at_0.png)
+
+![val_loss_at_500](assets/val_loss_at_500.png)
+
+![val_loss_at_900](assets/val_loss_at_900.png)
+
+
 ## Overview
 
 This implementation includes:
